@@ -9,7 +9,8 @@
 		"assert-plus": "^1.0.0"
 	},
 	"devDependencies": {
-		"tap": "0.2"
+		"deepcopy": "^2.0.0",
+		"tap": "^14.0.0"
 	},
 	"scripts": {
 		"test": "./node_modules/.bin/tap ./test"
