@@ -10,9 +10,10 @@
 'use strict';
 
 const tap = require('tap');
-
-const { Dataset } = require('../lib/mock-dataset.js');
+const mockds = require('../lib/mock-dataset.js');
 const { VError } = require('verror');
+
+const Dataset = mockds.Dataset;
 
 function check_verror(t, testcb, name, message) {
     message = message || `${testcb.name} throws VError with name=${name}`;
@@ -30,7 +31,7 @@ function check_verror(t, testcb, name, message) {
 
 tap.test('Dataset', (tt) => {
     tt.afterEach(function (done) {
-        Dataset.reset();
+        mockds.reset();
         done();
     });
 
@@ -230,8 +231,8 @@ tap.test('Dataset', (tt) => {
 
         // Recursive snapshot
         let snap2 = fs1.snapshot('snap2', { recursive: true });
-        let snap2a = Dataset.get('root/fs1/a@snap2');
-        let snap2v = Dataset.get('root/fs1/v@snap2');
+        let snap2a = mockds.get('root/fs1/a@snap2');
+        let snap2v = mockds.get('root/fs1/v@snap2');
         let snap3 = fs1a.snapshot('snap3');
 
         found = new Set();
@@ -324,7 +325,7 @@ tap.test('Dataset', (tt) => {
             'can rename root/fs1 -> root/fs2');
         t.equals(fs1.name, 'root/fs2', 'name is correct after rename');
         t.doesNotThrow(function () {
-            let check = Dataset.get('root/fs2@snap1');
+            let check = mockds.get('root/fs2@snap1');
             t.equals(check, snap1, 'found the right snap1');
             t.equals(check.name, 'root/fs2@snap1', 'snapshot name ok');
         }, 'can find root/fs2@snap');
@@ -399,7 +400,7 @@ tap.test('Dataset', (tt) => {
         check_verror(t, function () { vol1.hold('nope'); }, 'DatasetTypeError',
             'cannot hold a volume');
 
-        let fs1ab_snap1 = Dataset.get(fs1ab.name + '@snap1');
+        let fs1ab_snap1 = mockds.get(fs1ab.name + '@snap1');
         t.doesNotThrow(function () { fs1ab_snap1.hold('reason1'); },
             `can create a hold on ${fs1ab_snap1.name}`);
         check_verror(t, function () { fs1ab_snap1.destroy(); },
@@ -411,7 +412,7 @@ tap.test('Dataset', (tt) => {
             fs1ab_snap1 = null;
         }, `can destroy snapshot after hold released`);
 
-        let fs1_snap1 = Dataset.get(fs1.name + '@snap1');
+        let fs1_snap1 = mockds.get(fs1.name + '@snap1');
         t.doesNotThrow(function () {
             fs1_snap1.hold('reason1', { recursive: true });
         }, `can create a recursive snapshot on ${fs1_snap1.name}`);
@@ -427,7 +428,7 @@ tap.test('Dataset', (tt) => {
             fs1ab = null;
         }, 'can destroy filesystem in hold hierarchy that has no snapshots');
 
-        let fs1a_snap1 = Dataset.get(fs1a.name + '@snap1');
+        let fs1a_snap1 = mockds.get(fs1a.name + '@snap1');
         check_verror(t, function () { fs1a_snap1.destroy(); },
             'SnapshotHoldError', 'cannot destroy a snapshot with a hold');
         // Be sure state didn't flip from 'active' by using a getter.

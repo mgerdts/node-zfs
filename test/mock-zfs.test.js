@@ -13,7 +13,9 @@ const tap = require('tap');
 
 const sprintf = require('sprintf-js').sprintf;
 const { zfs, zpool } = require ('../lib/mock-zfs.js');
-const { Dataset } = require ('../lib/mock-dataset.js');
+const mockds = require ('../lib/mock-dataset.js');
+
+const Dataset = mockds.Dataset;
 
 /**
  * Compares two nested lists of the form [ [ 'pool' ], [ 'pool2' ] ]
@@ -42,7 +44,7 @@ function checkPoolList(t, have, want) {
 
 tap.test('zpool', (tt) => {
     tt.afterEach(function (done) {
-        Dataset.reset();
+        mockds.reset();
         done();
     });
 
