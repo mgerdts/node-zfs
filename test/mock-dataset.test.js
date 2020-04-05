@@ -526,7 +526,7 @@ tap.test('Dataset', (tt) => {
         var file1 = '/test123/fs1/file1';
         var file1_content = 'file1 stuff';
         fs.writeFileSync(file1, file1_content, { mode: 0o644 });
-        t.equal(fs.readFileSync(file1).toString(), file1_content,
+        t.equals(fs.readFileSync(file1).toString(), file1_content,
             'file1 content can be read after writing');
 
         var snap1 = fs1.snapshot('snap1');
@@ -537,33 +537,77 @@ tap.test('Dataset', (tt) => {
         t.doesNotThrow(function () {
             content = fs.readFileSync('/test123/fs2/file1').toString();
         }, 'can read /test123/fs2/file1');
-        t.equal(content, file1_content,
+        t.equals(content, file1_content,
             '/test123/fs2/file1 has expected content');
 
         var files;
         t.doesNotThrow(function () {
             files = fs.readdirSync(fs2.mountpoint);
         }, 'can readdir(' + fs2.mountpoint + ')');
-        t.equal(files.length, 1, 'fs2 mountpoint has one file');
-        t.equal(files[0], 'file1', 'fs2 contains file1');
+        t.equals(files.length, 1, 'fs2 mountpoint has one file');
+        t.equals(files[0], 'file1', 'fs2 contains file1');
 
         fs2.unmount();
         t.doesNotThrow(function () {
             files = fs.readdirSync(fs2.mountpoint);
         }, 'can readdir(' + fs2.mountpoint + ') after unmount');
-        t.equal(files.length, 0, 'fs2 mountpoint is empty after unmount');
+        t.equals(files.length, 0, 'fs2 mountpoint is empty after unmount');
 
         fs2.mount();
         t.doesNotThrow(function () {
             files = fs.readdirSync(fs2.mountpoint);
         }, 'can readdir(' + fs2.mountpoint + ')');
-        t.equal(files.length, 1, 'fs2 mountpoint has one file after mount');
-        t.equal(files[0], 'file1', 'fs2 contains file1 after mount');
+        t.equals(files.length, 1, 'fs2 mountpoint has one file after mount');
+        t.equals(files[0], 'file1', 'fs2 contains file1 after mount');
         t.doesNotThrow(function () {
             content = fs.readFileSync('/test123/fs2/file1').toString();
         }, 'can read /test123/fs2/file1 after mount');
-        t.equal(content, file1_content,
+        t.equals(content, file1_content,
             '/test123/fs2/file1 has expected content');
+
+        // Set up a more complex directory hierarchy, then rename the dataset.
+        // Be sure everything pops up in the right place under the new name.
+        fs.mkdirSync('/test123/fs2/dir1');
+        fs.mkdirSync('/test123/fs2/dir1/dir2');
+        fs.symlinkSync('/some/where', '/test123/fs2/dir1/link1');
+        t.equals('/some/where', fs.readlinkSync('/test123/fs2/dir1/link1'),
+            '/test123/fs2/dir1/link1 symlink points to /some/where');
+        fs.writeFileSync('/test123/fs2/dir1/dir2/file3', 'file3 stuff');
+
+        t.doesNotThrow(function () {
+            fs2.rename('test123/fs2a');
+        }, 'can rename a mounted file system that has stuff in it');
+        var stat;
+        t.throws(function () {
+            fs.lstatSync('/test123/fs2/dir1');
+        }, 'fs content no longer visible under old mountpoint');
+        t.doesNotThrow(function () {
+            stat = fs.lstatSync('/test123/fs2a');
+        }, '/test123/fs2a exists');
+        t.ok(stat.isDirectory(), '/test123/fs2a is a directory');
+        t.doesNotThrow(function () {
+            stat = fs.lstatSync('/test123/fs2a/dir1');
+        }, '/test123/fs2a/dir1 exists');
+        t.ok(stat.isDirectory(), '/test123/fs2a/dir1 is a directory');
+        t.doesNotThrow(function () {
+            stat = fs.lstatSync('/test123/fs2a/dir1/dir2');
+        }, '/test123/fs2a/dir1/dir2 exists');
+        t.ok(stat.isDirectory(), '/test123/fs2a/dir1/dir2 is a directory');
+        t.doesNotThrow(function () {
+            stat = fs.lstatSync('/test123/fs2a/dir1/link1');
+        }, '/test123/fs2a/dir1/link1 exists');
+        t.ok(stat.isSymbolicLink(), '/test123/fs2a/dir1/link1 is a symlink');
+        t.equals('/some/where', fs.readlinkSync('/test123/fs2a/dir1/link1'),
+            'symlink points to /some/where');
+        t.doesNotThrow(function () {
+            stat = fs.lstatSync('/test123/fs2a/dir1/dir2/file3');
+        }, '/test123/fs2a/dir1/dir2/file3 exists');
+        t.ok(stat.isFile(), '/test123/fs2a/dir1/dir2/file3 is a file');
+        t.doesNotThrow(function () {
+            content = fs.readFileSync('/test123/fs2a/dir1/dir2/file3')
+                .toString();
+        }, 'can read file3');
+        t.equals(content, 'file3 stuff', 'file3 has the right stuff');
 
         t.end();
     });
