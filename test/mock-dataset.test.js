@@ -11,6 +11,9 @@
 
 const tap = require('tap');
 const mockds = require('../lib/mock-dataset.js');
+const mockfs = require('mock-fs');
+const sprintf = require('sprintf-js').sprintf;
+const fs = require('fs');
 const { VError } = require('verror');
 
 const Dataset = mockds.Dataset;
@@ -509,6 +512,58 @@ tap.test('Dataset', (tt) => {
                     `cannot set ro ${prop} on ${ds.name}`);
             }
         }
+
+        t.end();
+    });
+
+    tt.test('mock-fs integration', (t) => {
+        mockfs({ '/test123': {} });
+
+        var top = new Dataset(null, 'test123', 'filesystem');
+        t.equals(top.mounted, true, 'top-level dataset is mounted');
+
+        var fs1 = new Dataset(top, 'fs1', 'filesystem');
+        var file1 = '/test123/fs1/file1';
+        var file1_content = 'file1 stuff';
+        fs.writeFileSync(file1, file1_content, { mode: 0o644 });
+        t.equal(fs.readFileSync(file1).toString(), file1_content,
+            'file1 content can be read after writing');
+
+        var snap1 = fs1.snapshot('snap1');
+        fs.writeFileSync('/test123/fs1/file2', 'file2 stuff', { mode: 0o644 });
+
+        var fs2 = snap1.clone('test123/fs2');
+        var content;
+        t.doesNotThrow(function () {
+            content = fs.readFileSync('/test123/fs2/file1').toString();
+        }, 'can read /test123/fs2/file1');
+        t.equal(content, file1_content,
+            '/test123/fs2/file1 has expected content');
+
+        var files;
+        t.doesNotThrow(function () {
+            files = fs.readdirSync(fs2.mountpoint);
+        }, 'can readdir(' + fs2.mountpoint + ')');
+        t.equal(files.length, 1, 'fs2 mountpoint has one file');
+        t.equal(files[0], 'file1', 'fs2 contains file1');
+
+        fs2.unmount();
+        t.doesNotThrow(function () {
+            files = fs.readdirSync(fs2.mountpoint);
+        }, 'can readdir(' + fs2.mountpoint + ') after unmount');
+        t.equal(files.length, 0, 'fs2 mountpoint is empty after unmount');
+
+        fs2.mount();
+        t.doesNotThrow(function () {
+            files = fs.readdirSync(fs2.mountpoint);
+        }, 'can readdir(' + fs2.mountpoint + ')');
+        t.equal(files.length, 1, 'fs2 mountpoint has one file after mount');
+        t.equal(files[0], 'file1', 'fs2 contains file1 after mount');
+        t.doesNotThrow(function () {
+            content = fs.readFileSync('/test123/fs2/file1').toString();
+        }, 'can read /test123/fs2/file1 after mount');
+        t.equal(content, file1_content,
+            '/test123/fs2/file1 has expected content');
 
         t.end();
     });
